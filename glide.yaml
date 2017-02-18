@@ -1,0 +1,3 @@
+package: github.com/gofly/qsaml
+import:
+- package: github.com/gofly/saml

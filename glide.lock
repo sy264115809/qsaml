@@ -1,0 +1,10 @@
+hash: 46a5689f0ab061bb1098ff730711914449b981d52b3a3247f142627774ae7344
+updated: 2017-02-18T12:29:13.525929981+08:00
+imports:
+- name: github.com/crewjam/errset
+  version: f78d65de925cf59a953184a376cbfe07cfe65e3d
+- name: github.com/crewjam/go-xmlsec
+  version: 1aa2f9374afac12f9864ced5babe8ff74427eed2
+- name: github.com/gofly/saml
+  version: 17ac39b1465582745361a584b4838ee48b404826
+testImports: []
