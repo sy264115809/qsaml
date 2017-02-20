@@ -36,6 +36,9 @@
 	        </div><!-- #login-header -->
             <form action="{{.URL}}" method="post">
                 <div class="form-controls">
+                    {{if ne .ErrMsg ""}}
+                    <p>{{.ErrMsg}}</p>
+                    {{end}}
                     <p>
                         <label for="username" style="display: none;">用户名</label>
                         <input autocorrect="off" autocapitalize="off" class="form-control" type="text" id="username" tabindex="1" placeholder="LDAP用户名" name="username"  />

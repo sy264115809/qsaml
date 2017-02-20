@@ -43,10 +43,32 @@ func readSPConfig(spConfDir string) (map[string]*saml.Metadata, error) {
 	return metas, err
 }
 
+func login(sessProvider *LDAPSessProvider, username, password string) (*http.Cookie, error) {
+	session, err := sessProvider.GetSessionByUsernameAndPassword(username, password)
+	if err != nil {
+		return nil, err
+	}
+	err = sessProvider.SetSession(session)
+	if err != nil {
+		err = fmt.Errorf("LDAPSessProvider.SetSession(%s) with error: %s", session.NameID, err)
+		return nil, err
+	}
+	cookie := &http.Cookie{
+		Name:     cookieName,
+		Value:    session.ID,
+		MaxAge:   int(session.ExpireTime.Sub(session.CreateTime)),
+		HttpOnly: true,
+		Path:     "/",
+	}
+	return cookie, nil
+}
 func handleSSO(assetsPrefix string, tmpl *template.Template,
 	idp *saml.IdentityProvider, sessProvider *LDAPSessProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var sessionID string
+		var (
+			sessionID string
+			errMsg    string
+		)
 		cookie, err := r.Cookie(cookieName)
 		if err == nil {
 			if time.Now().After(cookie.Expires) {
@@ -61,74 +83,70 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 		err = r.ParseForm()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return
-		}
-		username := strings.TrimSpace(r.PostFormValue("username"))
-		password := strings.TrimSpace(r.PostFormValue("password"))
-		if username != "" {
-			session, err := sessProvider.GetSessionByUsernameAndPassword(username, password)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
-				log.Printf("LDAPSessProvider.GetSessionByUsernameAndPassword(%s) with error: %s\n", username, err)
-				return
+			errMsg = "请求参数不正确"
+		} else {
+			username := strings.TrimSpace(r.PostFormValue("username"))
+			password := strings.TrimSpace(r.PostFormValue("password"))
+			if username == "" || password == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				errMsg = "用户名和密码不能为空"
+			} else {
+				cookie, err = login(sessProvider, username, password)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					errMsg = "登录出错"
+				} else {
+					http.SetCookie(w, cookie)
+				}
 			}
-			err = sessProvider.SetSession(session)
-			if err != nil {
-				log.Printf("LDAPSessProvider.SetSession(%s) with error: %s\n", session.NameID, err)
-			}
-			cookie = &http.Cookie{
-				Name:     cookieName,
-				Value:    session.ID,
-				MaxAge:   int(session.ExpireTime.Sub(session.CreateTime)),
-				HttpOnly: true,
-				Path:     "/",
-			}
-			http.SetCookie(w, cookie)
-			sessionID = session.ID
 		}
 
 		req, err := saml.NewIdpAuthnRequest(idp, r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("请求参数不正确"))
-			return
+			errMsg = "请求参数不正确"
+		} else {
+			err = req.Validate()
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				errMsg = "请求参数不正确"
+			}
 		}
-		err = req.Validate()
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("请求参数不正确"))
-			return
-		}
+
 		if sessionID != "" {
 			session, err := sessProvider.GetSessionBySessionID(sessionID)
 			if err == nil {
 				ssoResponse, err := req.GetSSOResponse(session)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte(err.Error()))
-					return
+					errMsg = "登录出错(1)"
+				} else {
+					err = tmpl.ExecuteTemplate(w, "redirect.html", map[string]interface{}{
+						"AssetsPrefix": assetsPrefix,
+						"URL":          ssoResponse.URL,
+						"SAMLResponse": ssoResponse.SAMLResponse,
+						"RelayState":   ssoResponse.RelayState,
+					})
+					if err != nil {
+						log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
+						w.WriteHeader(http.StatusInternalServerError)
+						errMsg = "登录出错(2)"
+					}
 				}
-				err = tmpl.ExecuteTemplate(w, "redirect.html", map[string]interface{}{
-					"AssetsPrefix": assetsPrefix,
-					"URL":          ssoResponse.URL,
-					"SAMLResponse": ssoResponse.SAMLResponse,
-					"RelayState":   ssoResponse.RelayState,
-				})
-				if err != nil {
-					log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
-				}
-				return
+			} else {
+				log.Printf("sessProvider.GetSessionBySessionID(%s) with error: %s\n", sessionID, err)
+				w.WriteHeader(http.StatusInternalServerError)
+				errMsg = "登录出错(3)"
 			}
 		}
+
 		data := map[string]interface{}{
+			"ErrMsg":       errMsg,
 			"AssetsPrefix": assetsPrefix,
 			"URL":          req.IDP.SSOURL,
 			"SAMLRequest":  base64.StdEncoding.EncodeToString(req.RequestBuffer),
 			"RelayState":   req.RelayState,
 		}
-
 		if err := tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
