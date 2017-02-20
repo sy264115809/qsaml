@@ -64,6 +64,9 @@ body {
   text-transform: none;
   text-decoration: none;
 }
+.btn[disabled]{
+  background-color: #999;
+}
 
 .btn-block {
   display: block;
