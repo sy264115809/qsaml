@@ -173,11 +173,15 @@ func main() {
 	flag.StringVar(&keyFilePath, "key-path", "key.pem", "private key path")
 	flag.StringVar(&certFilePath, "cert-path", "cert.pem", "certificate path")
 	flag.StringVar(&httpPrefix, "http-prefix", "http://localhost:8080", "http prefix")
-	flag.StringVar(&assetsPrefix, "assets-prefix", "http://localhost:8080", "assets prefix")
+	flag.StringVar(&assetsPrefix, "assets-prefix", "", "assets prefix, same as -http-prefix if it's empty")
 	flag.StringVar(&ldapAddr, "ldap-addr", "localhost:389", "ldap server address")
 	flag.StringVar(&ldapBindDN, "ldap-bind-dn", "ou=People,dc=qiniu,dc=com", "ldap bind dn")
 	flag.IntVar(&sessionMaxAgeSeconds, "session-max-age", 3600, "session max age in seconds")
 	flag.Parse()
+
+	if assetsPrefix == "" {
+		assetsPrefix = httpPrefix
+	}
 
 	serviceProviders, err := readSPConfig(spConfDir)
 	if err != nil {
