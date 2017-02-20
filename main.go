@@ -40,25 +40,17 @@ type LDAPSessProvider struct {
 	bindDN   string
 }
 
-func (p *LDAPSessProvider) GetSession(w http.ResponseWriter, r *http.Request, req *saml.IdpAuthnRequest) *saml.Session {
-	cookie, err := r.Cookie(cookieName)
-	if err == nil {
-		if session, ok := sessions[cookie.Value]; ok {
-			return session
-		}
-	}
-	username := strings.TrimSpace(r.PostFormValue("username"))
-	password := strings.TrimSpace(r.PostFormValue("password"))
+func (p *LDAPSessProvider) GetSessionByUsernameAndPassword(username, password string) (*saml.Session, error) {
 	ldapConn, err := ldap.DialTLS("tcp", p.ldapAddr, nil)
 	if err != nil {
 		log.Printf("ldap.DialTLS %s with error: %s \n", p.ldapAddr, err)
-		return nil
+		return nil, nil
 	}
 	defer ldapConn.Close()
 
 	err = ldapConn.Bind(fmt.Sprintf("cn=%s,%s", username, p.bindDN), password)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	sessID := base64.StdEncoding.EncodeToString(randomBytes(32))
@@ -70,14 +62,7 @@ func (p *LDAPSessProvider) GetSession(w http.ResponseWriter, r *http.Request, re
 		Index:      hex.EncodeToString(randomBytes(32)),
 		UserName:   username,
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     "",
-		Value:    sessID,
-		MaxAge:   int(sessionMaxAge.Seconds()),
-		HttpOnly: true,
-		Path:     "/",
-	})
-	return sessions[sessID]
+	return sessions[sessID], nil
 }
 
 func (p *LDAPSessProvider) DestroySession(sessID string) error {
@@ -107,6 +92,78 @@ func readSPConfig(spConfDir string) (map[string]*saml.Metadata, error) {
 	return metas, err
 }
 
+func handleSSO(assetsPrefix string, tmpl *template.Template,
+	idp *saml.IdentityProvider, sessProvider *LDAPSessProvider) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(cookieName)
+		if err == nil && time.Now().After(cookie.Expires) {
+			sessProvider.DestroySession(cookie.Value)
+		}
+		err = r.ParseForm()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		username := strings.TrimSpace(r.PostFormValue("username"))
+		password := strings.TrimSpace(r.PostFormValue("password"))
+		if username != "" {
+			session, err := sessProvider.GetSessionByUsernameAndPassword(username, password)
+			if err != nil {
+				return
+			}
+			sessions[session.ID] = session
+			cookie = &http.Cookie{
+				Name:     cookieName,
+				Value:    session.ID,
+				MaxAge:   int(sessionMaxAge.Seconds()),
+				HttpOnly: true,
+				Path:     "/",
+			}
+			http.SetCookie(w, cookie)
+			return
+		}
+
+		req, err := saml.NewIdpAuthnRequest(idp, r)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("请求参数不正确"))
+			return
+		}
+		err = req.Validate()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("请求参数不正确"))
+			return
+		}
+
+		if session, ok := sessions[cookie.Value]; ok {
+			ssoResponse, err := req.GetSSOResponse(session)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+			err = tmpl.ExecuteTemplate(w, "redirect.html", ssoResponse)
+			if err != nil {
+				log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
+			}
+		} else {
+			data := map[string]interface{}{
+				"AssetsPrefix": assetsPrefix,
+				"URL":          req.IDP.SSOURL,
+				"SAMLRequest":  base64.StdEncoding.EncodeToString(req.RequestBuffer),
+				"RelayState":   req.RelayState,
+			}
+
+			if err := tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		}
+	}
+}
 func main() {
 	var (
 		spConfDir, keyFilePath, certFilePath, httpPrefix, assetsPrefix, ldapAddr, ldapBindDN string
@@ -136,55 +193,22 @@ func main() {
 	}
 
 	sessProvider := &LDAPSessProvider{ldapAddr, ldapBindDN}
-	provider := &saml.IdentityProvider{
+	idp := &saml.IdentityProvider{
 		Key:              string(key),
 		Certificate:      string(cert),
 		MetadataURL:      fmt.Sprintf("%s/meta", httpPrefix),
 		SSOURL:           fmt.Sprintf("%s/sso", httpPrefix),
 		ServiceProviders: serviceProviders,
-		SessionProvider:  sessProvider,
 	}
 
-	tmpl := template.Must(template.New("saml-post-form").ParseGlob("templates/*.html"))
-	http.HandleFunc("/meta", provider.ServeMetadata)
-	http.HandleFunc("/sso", func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(cookieName)
-		if err == nil {
-			if time.Now().Before(cookie.Expires) {
-				provider.ServeSSO(w, r)
-				return
-			}
-		}
-		err = r.ParseForm()
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return
-		}
-		if len(r.PostFormValue("username")) > 0 {
-			provider.ServeSSO(w, r)
-			return
-		}
-
-		req, err := saml.NewIdpAuthnRequest(provider, r)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("请求参数不正确"))
-			return
-		}
-		data := map[string]interface{}{
-			"AssetsPrefix": assetsPrefix,
-			"URL":          req.IDP.SSOURL,
-			"SAMLRequest":  base64.StdEncoding.EncodeToString(req.RequestBuffer),
-			"RelayState":   req.RelayState,
-		}
-
-		if err := tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
+	tmpl := template.Must(template.New("qsaml-templates").ParseGlob("templates/*.html"))
+	http.HandleFunc("/meta", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/samlmetadata+xml")
+		encoder := xml.NewEncoder(w)
+		encoder.Indent("", "  ")
+		encoder.Encode(idp.Metadata())
 	})
+	http.HandleFunc("/sso", handleSSO(assetsPrefix, tmpl, idp, sessProvider))
 	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
 		if err == nil {

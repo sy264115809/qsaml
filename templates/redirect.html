@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, height=device-height, initial-scale=1.0" />
+    <link rel="shortcut icon" href="{{.AssetsPrefix}}/static/favicon.ico" />
+    <title>七牛单点登录</title>
+    <script type="text/javascript" src="{{.AssetsPrefix}}/static/jquery.min.js"></script>
+    <script type="text/javascript" src="{{.AssetsPrefix}}/static/script.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{.AssetsPrefix}}/static/fonts.css" />
+    <link rel="stylesheet" type="text/css" href="{{.AssetsPrefix}}/static/normalize.css" />
+    <link rel="stylesheet" type="text/css" href="{{.AssetsPrefix}}/static/default.css" />
+    <!-- IE Fixes -->
+    <!--[if lt IE 9]>
+      <script type="text/javascript" src="{{.AssetsPrefix}}/static/PIE/PIE_IE678.js"></script>
+    <![endif]-->
+    <!--[if IE 9]>
+      <script type="text/javascript" src="{{.AssetsPrefix}}/static/PIE/PIE_IE9.js"></script>
+    <![endif]-->
+    <script type="text/javascript" src="{{.AssetsPrefix}}/static/ie.js"></script>
+</head>
+<body>
+    <form method="post" action="{{.URL}}" id="SAMLResponseForm">
+		<input type="hidden" name="SAMLResponse" value="{{.SAMLResponse}}" />
+		<input type="hidden" name="RelayState" value="{{.RelayState}}" />
+		<input type="submit" value="继续" />
+    </form>
+    <script>document.getElementById('SAMLResponseForm').submit();</script>
+</body>
+</html>
