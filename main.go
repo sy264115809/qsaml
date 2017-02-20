@@ -56,7 +56,7 @@ func login(sessProvider *LDAPSessProvider, username, password string) (*http.Coo
 	cookie := &http.Cookie{
 		Name:     cookieName,
 		Value:    session.ID,
-		MaxAge:   int(session.ExpireTime.Sub(session.CreateTime)),
+		MaxAge:   int(session.ExpireTime.Sub(session.CreateTime).Seconds()),
 		HttpOnly: true,
 		Path:     "/",
 	}
