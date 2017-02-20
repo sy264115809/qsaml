@@ -62,6 +62,7 @@ func login(sessProvider *LDAPSessProvider, username, password string) (*http.Coo
 	}
 	return cookie, nil
 }
+
 func handleSSO(assetsPrefix string, tmpl *template.Template,
 	idp *saml.IdentityProvider, sessProvider *LDAPSessProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -83,18 +84,21 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 		err = r.ParseForm()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			errMsg = "请求参数不正确"
+			errMsg = "请求参数不正确：无法解析请求"
 		} else {
 			username := strings.TrimSpace(r.PostFormValue("username"))
 			password := strings.TrimSpace(r.PostFormValue("password"))
-			if username == "" || password == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				errMsg = "用户名和密码不能为空"
-			} else {
+			if username != "" && password != "" {
 				cookie, err = login(sessProvider, username, password)
 				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					errMsg = "登录出错"
+					if err == ErrBindFailed {
+						w.WriteHeader(http.StatusUnauthorized)
+						errMsg = "用户名或密码错误"
+					} else {
+						w.WriteHeader(http.StatusInternalServerError)
+						errMsg = "登录出错：" + err.Error()
+						log.Printf("login with error: %s\n", err)
+					}
 				} else {
 					http.SetCookie(w, cookie)
 				}
@@ -104,12 +108,12 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 		req, err := saml.NewIdpAuthnRequest(idp, r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			errMsg = "请求参数不正确"
+			errMsg = "请求参数不正确：" + err.Error()
 		} else {
 			err = req.Validate()
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				errMsg = "请求参数不正确"
+				errMsg = "请求参数不正确：" + err.Error()
 			}
 		}
 
@@ -119,7 +123,8 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 				ssoResponse, err := req.GetSSOResponse(session)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
-					errMsg = "登录出错(1)"
+					errMsg = "登录出错：" + err.Error()
+					log.Printf("GetSSOResponse with error: %s\n", err)
 				} else {
 					err = tmpl.ExecuteTemplate(w, "redirect.html", map[string]interface{}{
 						"AssetsPrefix": assetsPrefix,
@@ -130,13 +135,16 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 					if err != nil {
 						log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
 						w.WriteHeader(http.StatusInternalServerError)
-						errMsg = "登录出错(2)"
+						errMsg = "登录出错：" + err.Error()
+						log.Printf("ExecuteTemplate(redirect.html) with error: %s\n", err)
+					} else {
+						return
 					}
 				}
 			} else {
-				log.Printf("sessProvider.GetSessionBySessionID(%s) with error: %s\n", sessionID, err)
 				w.WriteHeader(http.StatusInternalServerError)
-				errMsg = "登录出错(3)"
+				errMsg = "登录出错：" + err.Error()
+				log.Printf("sessProvider.GetSessionBySessionID(%s) with error: %s\n", sessionID, err)
 			}
 		}
 
@@ -208,7 +216,7 @@ func main() {
 			err := sessProvider.DestroySession(cookie.Value)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+				log.Printf("DestroySession(%s) with error: %s\n", cookie.Value, err)
 				return
 			}
 		}
