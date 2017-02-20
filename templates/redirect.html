@@ -30,12 +30,12 @@
             <form action="{{.URL}}" method="post">
                 <div class="form-controls">
                     <p>
-                        <input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />
+                        <input type="hidden" name="SAMLResponse" value="{{.SAMLResponse}}" />
                         <input type="hidden" name="RelayState" value="{{.RelayState}}" />
                     </p>
                 </div>
                 <p><input type="submit" class="btn btn-block" id="regularsubmit" value="继续" /></p>
-                <script>document.getElementById('SAMLResponseForm').submit();</script>
+                <script>$('form').submit();</script>
             </form>
             <div id="login-footer">
                 <p>&nbsp;</p>

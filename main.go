@@ -113,7 +113,7 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 				err = tmpl.ExecuteTemplate(w, "redirect.html", map[string]interface{}{
 					"AssetsPrefix": assetsPrefix,
 					"URL":          ssoResponse.URL,
-					"SAMLRequest":  ssoResponse.SAMLResponse,
+					"SAMLResponse": ssoResponse.SAMLResponse,
 					"RelayState":   ssoResponse.RelayState,
 				})
 				if err != nil {
