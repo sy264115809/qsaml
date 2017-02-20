@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -16,59 +15,11 @@ import (
 	"time"
 
 	"github.com/gofly/saml"
-	"github.com/vanackere/ldap"
 )
 
 const (
-	sessionMaxAge = time.Hour
-	cookieName    = "qsaml"
+	cookieName = "qsaml"
 )
-
-var sessions map[string]*saml.Session
-
-func init() {
-	sessions = make(map[string]*saml.Session)
-}
-func randomBytes(n int) []byte {
-	rv := make([]byte, n)
-	saml.RandReader.Read(rv)
-	return rv
-}
-
-type LDAPSessProvider struct {
-	ldapAddr string
-	bindDN   string
-}
-
-func (p *LDAPSessProvider) GetSessionByUsernameAndPassword(username, password string) (*saml.Session, error) {
-	ldapConn, err := ldap.DialTLS("tcp", p.ldapAddr, nil)
-	if err != nil {
-		log.Printf("ldap.DialTLS %s with error: %s \n", p.ldapAddr, err)
-		return nil, nil
-	}
-	defer ldapConn.Close()
-
-	err = ldapConn.Bind(fmt.Sprintf("cn=%s,%s", username, p.bindDN), password)
-	if err != nil {
-		return nil, err
-	}
-
-	sessID := base64.StdEncoding.EncodeToString(randomBytes(32))
-	sessions[sessID] = &saml.Session{
-		ID:         sessID,
-		NameID:     username,
-		CreateTime: saml.TimeNow(),
-		ExpireTime: saml.TimeNow().Add(sessionMaxAge),
-		Index:      hex.EncodeToString(randomBytes(32)),
-		UserName:   username,
-	}
-	return sessions[sessID], nil
-}
-
-func (p *LDAPSessProvider) DestroySession(sessID string) error {
-	delete(sessions, sessID)
-	return nil
-}
 
 func readSPConfig(spConfDir string) (map[string]*saml.Metadata, error) {
 	metas := make(map[string]*saml.Metadata)
@@ -97,7 +48,10 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
 		if err == nil && time.Now().After(cookie.Expires) {
-			sessProvider.DestroySession(cookie.Value)
+			err = sessProvider.DestroySession(cookie.Value)
+			if err != nil {
+				log.Printf("LDAPSessProvider.DestroySession(%s) with error: %s\n", cookie.Value, err)
+			}
 		}
 		err = r.ParseForm()
 		if err != nil {
@@ -110,13 +64,19 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 		if username != "" {
 			session, err := sessProvider.GetSessionByUsernameAndPassword(username, password)
 			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				log.Printf("LDAPSessProvider.GetSessionByUsernameAndPassword(%s) with error: %s\n", username, err)
 				return
 			}
-			sessions[session.ID] = session
+			err = sessProvider.SetSession(session)
+			if err != nil {
+				log.Printf("LDAPSessProvider.SetSession(%s) with error: %s\n", session.NameID, err)
+			}
 			cookie = &http.Cookie{
 				Name:     cookieName,
 				Value:    session.ID,
-				MaxAge:   int(sessionMaxAge.Seconds()),
+				MaxAge:   int(session.ExpireTime.Sub(session.CreateTime)),
 				HttpOnly: true,
 				Path:     "/",
 			}
@@ -137,7 +97,8 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 			return
 		}
 
-		if session, ok := sessions[cookie.Value]; ok {
+		session, err := sessProvider.GetSessionBySessionID(cookie.Value)
+		if err == nil {
 			ssoResponse, err := req.GetSSOResponse(session)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -148,25 +109,28 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 			if err != nil {
 				log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
 			}
-		} else {
-			data := map[string]interface{}{
-				"AssetsPrefix": assetsPrefix,
-				"URL":          req.IDP.SSOURL,
-				"SAMLRequest":  base64.StdEncoding.EncodeToString(req.RequestBuffer),
-				"RelayState":   req.RelayState,
-			}
+			return
+		}
 
-			if err := tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
-				return
-			}
+		data := map[string]interface{}{
+			"AssetsPrefix": assetsPrefix,
+			"URL":          req.IDP.SSOURL,
+			"SAMLRequest":  base64.StdEncoding.EncodeToString(req.RequestBuffer),
+			"RelayState":   req.RelayState,
+		}
+
+		if err := tmpl.ExecuteTemplate(w, "login.html", data); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
 		}
 	}
 }
 func main() {
 	var (
-		spConfDir, keyFilePath, certFilePath, httpPrefix, assetsPrefix, ldapAddr, ldapBindDN string
+		spConfDir, keyFilePath, certFilePath           string
+		httpPrefix, assetsPrefix, ldapAddr, ldapBindDN string
+		sessionMaxAgeSeconds                           int
 	)
 	flag.StringVar(&spConfDir, "sp-dir", "sp", "service provider configs directory")
 	flag.StringVar(&keyFilePath, "key-path", "key.pem", "private key path")
@@ -175,6 +139,7 @@ func main() {
 	flag.StringVar(&assetsPrefix, "assets-prefix", "http://localhost:8080", "assets prefix")
 	flag.StringVar(&ldapAddr, "ldap-addr", "localhost:389", "ldap server address")
 	flag.StringVar(&ldapBindDN, "ldap-bind-dn", "ou=People,dc=qiniu,dc=com", "ldap bind dn")
+	flag.IntVar(&sessionMaxAgeSeconds, "session-max-age", 3600, "session max age in seconds")
 	flag.Parse()
 
 	serviceProviders, err := readSPConfig(spConfDir)
@@ -191,8 +156,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read certificate file from %s with error: %s\n", certFilePath, err)
 	}
-
-	sessProvider := &LDAPSessProvider{ldapAddr, ldapBindDN}
+	sessionMaxAge := time.Second * time.Duration(sessionMaxAgeSeconds)
+	sessProvider := NewLDAPSessionProvider(ldapAddr, ldapBindDN, sessionMaxAge)
 	idp := &saml.IdentityProvider{
 		Key:              string(key),
 		Certificate:      string(cert),

@@ -20,11 +20,26 @@
     <script type="text/javascript" src="{{.AssetsPrefix}}/static/ie.js"></script>
 </head>
 <body>
-    <form method="post" action="{{.URL}}" id="SAMLResponseForm">
-		<input type="hidden" name="SAMLResponse" value="{{.SAMLResponse}}" />
-		<input type="hidden" name="RelayState" value="{{.RelayState}}" />
-		<input type="submit" value="继续" />
-    </form>
-    <script>document.getElementById('SAMLResponseForm').submit();</script>
+    <div id="login-box">
+            <div id="login-header">
+                <div id="logo">
+                    <img src="{{.AssetsPrefix}}/static/logo.png" alt="Logo" />
+                </div>
+	            <h1>七牛单点登录</h1>
+	        </div><!-- #login-header -->
+            <form action="{{.URL}}" method="post">
+                <div class="form-controls">
+                    <p>
+                        <input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />
+                        <input type="hidden" name="RelayState" value="{{.RelayState}}" />
+                    </p>
+                </div>
+                <p><input type="submit" class="btn btn-block" id="regularsubmit" value="继续" /></p>
+                <script>document.getElementById('SAMLResponseForm').submit();</script>
+            </form>
+            <div id="login-footer">
+                <p>&nbsp;</p>
+            </div>
+        </div>
 </body>
 </html>
