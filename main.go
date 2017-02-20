@@ -101,6 +101,7 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 					}
 				} else {
 					http.SetCookie(w, cookie)
+					sessionID = cookie.Value
 				}
 			}
 		}
