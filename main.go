@@ -110,7 +110,12 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 					w.Write([]byte(err.Error()))
 					return
 				}
-				err = tmpl.ExecuteTemplate(w, "redirect.html", ssoResponse)
+				err = tmpl.ExecuteTemplate(w, "redirect.html", map[string]interface{}{
+					"AssetsPrefix": assetsPrefix,
+					"URL":          ssoResponse.URL,
+					"SAMLRequest":  ssoResponse.SAMLResponse,
+					"RelayState":   ssoResponse.RelayState,
+				})
 				if err != nil {
 					log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
 				}
