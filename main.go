@@ -51,7 +51,7 @@ func (p *LDAPSessProvider) GetSession(w http.ResponseWriter, r *http.Request, re
 	password := strings.TrimSpace(r.PostFormValue("password"))
 	ldapConn, err := ldap.DialTLS("tcp", p.ldapAddr, nil)
 	if err != nil {
-		log.Printf("ldap.DialTLS %s with error: \n", p.ldapAddr)
+		log.Printf("ldap.DialTLS %s with error: %s \n", p.ldapAddr, err)
 		return nil
 	}
 	defer ldapConn.Close()
