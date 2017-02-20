@@ -1,10 +1,14 @@
-hash: 46a5689f0ab061bb1098ff730711914449b981d52b3a3247f142627774ae7344
-updated: 2017-02-18T20:30:05.762516984+08:00
+hash: c96ce58340da607b53085e598e614e282bedbb9965005a88942fcaf13659ab8c
+updated: 2017-02-20T13:38:54.554851288+08:00
 imports:
 - name: github.com/crewjam/errset
   version: f78d65de925cf59a953184a376cbfe07cfe65e3d
 - name: github.com/gofly/go-xmlsec
-  version: d6ef404d9f35024e2c870fae1b9f3d6df929e39d
+  version: d804d43a21916e3fe4de2d0a4b72e252efde6050
 - name: github.com/gofly/saml
-  version: 33fcc22e1e99b29b72798504069553ec946c3db6
+  version: 14f5eb6da805faf04f94f4d46a4630180b96efc0
+- name: github.com/vanackere/ldap
+  version: fb101635e3c0729d0c5862b61c40a5d123834c3e
+- name: gopkg.in/asn1-ber.v1
+  version: 4e86f4367175e39f69d9358a5f17b4dda270378d
 testImports: []

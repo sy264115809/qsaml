@@ -1,0 +1,327 @@
+/*
+Colours:
+  light grey  #f2f2f2 - > #eee
+  dark grey   #999 -> #666
+  blue        #00bce4
+*/
+
+/*** General ***/
+* {
+  -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
+  -moz-box-sizing: border-box;    /* Firefox, other Gecko */
+  -ms-box-sizing: border-box;
+  box-sizing: border-box;         /* Opera/IE 8+ */
+}
+
+body {
+  font-family: 'Lato', sans-serif;
+  font-weight: 400;
+  background-color: #eee;
+}
+
+
+/** Alerts **/
+.alert {
+  background-color: #f2dede;
+  border: 1px solid #ebccd1;
+  color: #a94442;
+  padding: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.alert-friendly {
+  background-color: #D9EDF7;
+  border: 1px solid #BCE8F1;
+  color: #31708F;
+}
+
+.alert h2 {
+  margin: 0;
+}
+
+.alert p {
+  margin: 5px 0;
+}
+
+
+/** Buttons **/
+.btn {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  color: #fff;
+  background-color: #00bce4;
+  outline: 0px none;
+  display: inline-block;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  padding: 6px 12px;
+  -moz-user-select: none;
+  overflow: visible;
+  text-transform: none;
+  text-decoration: none;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  font-size: 1.2em;
+  font-weight: 700;
+}
+
+.btn-link {
+  color: #00bce4;
+  text-decoration: none;
+  border-color: transparent;
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+  box-shadow: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+}
+
+.btn-link:hover {
+  border-bottom: 1px dotted #0094D8;
+}
+
+
+/** Form Elements **/
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  line-height: 1.42857;
+  color: #555;
+  background-color: #fff;
+  background-image: none;
+  border: 1px solid #ccc;
+}
+
+.form-control.small {
+  font-size: 14px;
+  padding: 8px;
+}
+
+.form-controls {
+  margin: 30px 0;
+}
+
+
+/*** Login Box ***/
+#login-box {
+  width: 515px;
+  margin: 100px auto 0 auto;
+  background-color: #fff;
+  padding: 20px;
+
+  -webkit-box-shadow: 0px 0px 6px 2px rgba(0, 0, 0, 0.3);
+  -moz-box-shadow:    0px 0px 6px 2px rgba(0, 0, 0, 0.3);
+  box-shadow:         0px 0px 6px 2px rgba(0, 0, 0, 0.3);
+}
+
+#login-box h1, .dialog-box h1 {
+  color: #00bce4;
+  font-size: 1.7em;
+  margin: 15px 0;
+}
+
+#login-box h2, .dialog-box h2 {
+  color: #666;
+  font-size: 1.3em;
+  margin: 15px 0;
+  text-align: center;
+}
+
+#login-box h3, .dialog-box h3 {
+  color: #666;
+  font-size: 1.1em;
+  margin: 15px 0;
+  text-align: center;
+}
+
+/* Username Field (specific) */
+#username {
+  margin-bottom: 10px;
+}
+
+
+/** Login Header **/
+#login-header {
+  border-bottom: 1px solid #666;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+
+/** Login Footer **/
+#login-footer {
+  border-top: 1px solid #666;
+  margin-top: 20px;
+  text-align: center;
+}
+
+#login-footer p {
+  color: #666;
+  margin: 15px 0 0 0;
+}
+
+#login-footer a {
+  color: #00bce4;
+  text-decoration: none;
+  border: 1px solid transparent;
+  vertical-align: baseline;
+}
+
+#login-footer a:hover {
+  border-bottom: 1px dotted #0094D8;
+}
+
+/*** Keyboard ***/
+.keyboard-box {
+  overflow: hidden;
+  clear: both;
+  position: relative;
+  margin-top: 5px;
+}
+
+.ui-keyboard {
+  text-align: center;
+  top: 0 !important;
+  background-color: #eee;
+  padding: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+  overflow: hidden;
+}
+.ui-keyboard button {
+  margin: 2px;
+  width: 30px;
+  height: 30px;
+  color: #fff;
+  background-color: #666;
+  outline: 0px none;
+  display: inline-block;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  background-image: none;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  padding: 6px 12px;
+  -moz-user-select: none;
+  overflow: visible;
+  text-transform: none;
+}
+.ui-keyboard button:hover {
+  background-color: #00bce4;
+}
+button.ui-keyboard-space {
+  width: 98px;
+}
+button.ui-keyboard-bksp {
+  background-color: #00bce4;
+}
+
+.row .ui-keyboard {
+  background-color: #fff;
+}
+
+/*.ui-keyboard-has-focus:before {
+   content: "";
+   margin: 0 auto;
+   border-width: 0px 20px 20px;
+   border-style: solid;
+   border-color: #666 transparent;
+   display: block;
+   width: 0px;
+   transform: scale(0.9999);
+}*/
+
+/*** Register ***/
+.row {
+  padding: 10px;
+  background-color: #eee;
+  margin-bottom: 10px;
+}
+.row.alternate {
+  background-color: #666;
+}
+
+/* Username Field (specific) */
+select.form-control {
+  margin-bottom: 10px;
+}
+
+/*** IE Fixes ***/
+label {
+  text-align: center;
+  line-height: 1.8em;
+}
+
+/*** Dialog ***/
+.dialog-box {
+  z-index: 2000;
+  width: 515px;
+  position: absolute;
+  top: 100px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  background-color: #fff;
+  padding: 20px;
+
+  -webkit-box-shadow: 0px 0px 6px 2px rgba(0, 0, 0, 0.3);
+  -moz-box-shadow:    0px 0px 6px 2px rgba(0, 0, 0, 0.3);
+  box-shadow:         0px 0px 6px 2px rgba(0, 0, 0, 0.3);
+}
+
+#cover {
+  z-index: 1000;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url(transparent60.png);
+  background-repeat: repeat;
+}
+
+#banner-text {
+  border-top: 1px solid #666;
+  border-left: 1px solid #666;
+  border-right: 1px solid #666;
+  padding-bottom: 20px;
+}
+/*** ISO logo ***/
+.iso-logo {
+    text-align: center;
+}
+
+/*** Help Text ***/
+.help-text {
+    color: #222;
+    font-size: 1.1em;
+}
+.help-text .small {
+    font-size: 0.9em;
+}
+
+/*** Auth options ***/
+.auth-options {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.auth-options li {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.auth-options input[type="radio"] {
+    margin: 4px 10px 4px 0;
+}

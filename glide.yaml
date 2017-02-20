@@ -1,3 +1,6 @@
 package: github.com/gofly/qsaml
 import:
 - package: github.com/gofly/saml
+- package: github.com/vanackere/ldap
+  version: ^1.0.0
+- package: github.com/gofly/go-xmlsec

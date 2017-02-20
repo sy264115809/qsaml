@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, height=device-height, initial-scale=1.0" />
+    <link rel="shortcut icon" href="{{.AssetsPrefix}}/static/favicon.ico" />
+    <title>七牛单点登录</title>
+    <script type="text/javascript" src="{{.AssetsPrefix}}/static/jquery.min.js"></script>
+    <script type="text/javascript" src="{{.AssetsPrefix}}/static/script.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{.AssetsPrefix}}/static/fonts.css" />
+    <link rel="stylesheet" type="text/css" href="{{.AssetsPrefix}}/static/normalize.css" />
+    <link rel="stylesheet" type="text/css" href="{{.AssetsPrefix}}/static/default.css" />
+    <!-- IE Fixes -->
+    <!--[if lt IE 9]>
+      <script type="text/javascript" src="{{.AssetsPrefix}}/static/PIE/PIE_IE678.js"></script>
+    <![endif]-->
+    <!--[if IE 9]>
+      <script type="text/javascript" src="{{.AssetsPrefix}}/static/PIE/PIE_IE9.js"></script>
+    <![endif]-->
+    <script type="text/javascript" src="{{.AssetsPrefix}}/static/ie.js"></script>
+</head>
+<body onload="qSAMLFocus('username');">
+    <div id="cover" style="display: none;"></div>
+    <div id="wrap">
+        <div id="dialog-forgot" class="dialog-box" style="display: none;">
+            <h1>忘记密码</h1>
+            <p>请联系管理员吕强强重置密码</p>
+            <a href="#" class="dialog-close btn">关闭</a>
+        </div>
+        <div id="login-box">
+            <div id="login-header">
+                <div id="logo">
+                    <img src="{{.AssetsPrefix}}/static/logo.png" alt="Logo" />
+                </div>
+	            <h1>七牛单点登录</h1>
+	        </div><!-- #login-header -->
+            <form action="{{.URL}}" method="post">
+                <div class="form-controls">
+                    <p>
+                        <label for="username" style="display: none;">用户名</label>
+                        <input autocorrect="off" autocapitalize="off" class="form-control" type="text" id="username" tabindex="1" placeholder="LDAP用户名" name="username"  />
+                        <label for="password" style="display: none;">密码</label>
+                        <input autocorrect="off" autocapitalize="off" class="form-control" id="password" type="password" tabindex="2" name="password" placeholder="LDAP密码" />
+                        <input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />
+                        <input type="hidden" name="RelayState" value="{{.RelayState}}" />
+                    </p>
+                </div>
+                <p><input type="submit" class="btn btn-block" id="regularsubmit" value="登录" /></p>
+            </form>
+            <div id="login-footer">
+                <p><a href="#" id="link-forgot">忘记密码</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
