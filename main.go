@@ -46,11 +46,16 @@ func readSPConfig(spConfDir string) (map[string]*saml.Metadata, error) {
 func handleSSO(assetsPrefix string, tmpl *template.Template,
 	idp *saml.IdentityProvider, sessProvider *LDAPSessProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var sessionID string
 		cookie, err := r.Cookie(cookieName)
-		if err == nil && time.Now().After(cookie.Expires) {
-			err = sessProvider.DestroySession(cookie.Value)
-			if err != nil {
-				log.Printf("LDAPSessProvider.DestroySession(%s) with error: %s\n", cookie.Value, err)
+		if err == nil {
+			if time.Now().After(cookie.Expires) {
+				err = sessProvider.DestroySession(cookie.Value)
+				if err != nil {
+					log.Printf("LDAPSessProvider.DestroySession(%s) with error: %s\n", cookie.Value, err)
+				}
+			} else {
+				sessionID = cookie.Value
 			}
 		}
 		err = r.ParseForm()
@@ -81,7 +86,7 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 				Path:     "/",
 			}
 			http.SetCookie(w, cookie)
-			return
+			sessionID = session.ID
 		}
 
 		req, err := saml.NewIdpAuthnRequest(idp, r)
@@ -96,22 +101,22 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 			w.Write([]byte("请求参数不正确"))
 			return
 		}
-
-		session, err := sessProvider.GetSessionBySessionID(cookie.Value)
-		if err == nil {
-			ssoResponse, err := req.GetSSOResponse(session)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+		if sessionID != "" {
+			session, err := sessProvider.GetSessionBySessionID(sessionID)
+			if err == nil {
+				ssoResponse, err := req.GetSSOResponse(session)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(err.Error()))
+					return
+				}
+				err = tmpl.ExecuteTemplate(w, "redirect.html", ssoResponse)
+				if err != nil {
+					log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
+				}
 				return
 			}
-			err = tmpl.ExecuteTemplate(w, "redirect.html", ssoResponse)
-			if err != nil {
-				log.Printf("tmpl.ExecuteTemplate(redirect.html) with error: %s\n", err)
-			}
-			return
 		}
-
 		data := map[string]interface{}{
 			"AssetsPrefix": assetsPrefix,
 			"URL":          req.IDP.SSOURL,
