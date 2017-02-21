@@ -75,6 +75,10 @@ func handleSSO(assetsPrefix string, tmpl *template.Template,
 		err = req.Validate()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			if err == saml.ErrRequestExpired {
+				w.Write([]byte("请求已过期，请返回重新登录"))
+				return
+			}
 			w.Write([]byte("请求参数不正确：" + err.Error()))
 			return
 		}
