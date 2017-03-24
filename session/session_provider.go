@@ -8,6 +8,8 @@ import (
 	"log"
 	"time"
 
+	"sync"
+
 	"github.com/gofly/saml"
 	"github.com/vanackere/ldap"
 )
@@ -28,6 +30,7 @@ type LDAPSessProvider struct {
 	bindDN        string
 	sessionMaxAge time.Duration
 	sessions      map[string]*saml.Session
+	sessLock      *sync.RWMutex
 }
 
 func NewLDAPSessionProvider(ldapAddr, bindDN string, sessionMaxAge time.Duration) *LDAPSessProvider {
@@ -36,6 +39,7 @@ func NewLDAPSessionProvider(ldapAddr, bindDN string, sessionMaxAge time.Duration
 		bindDN:        bindDN,
 		sessionMaxAge: sessionMaxAge,
 		sessions:      make(map[string]*saml.Session),
+		sessLock:      &sync.RWMutex{},
 	}
 }
 
@@ -64,6 +68,8 @@ func (p *LDAPSessProvider) GetSessionByUsernameAndPassword(username, password st
 }
 
 func (p *LDAPSessProvider) GetSessionBySessionID(sessID string) (*saml.Session, error) {
+	p.sessLock.RLock()
+	defer p.sessLock.RUnlock()
 	if session, ok := p.sessions[sessID]; ok {
 		return session, nil
 	}
@@ -71,11 +77,15 @@ func (p *LDAPSessProvider) GetSessionBySessionID(sessID string) (*saml.Session, 
 }
 
 func (p *LDAPSessProvider) SetSession(session *saml.Session) error {
+	p.sessLock.Lock()
+	defer p.sessLock.Unlock()
 	p.sessions[session.ID] = session
 	return nil
 }
 
 func (p *LDAPSessProvider) DestroySession(sessID string) error {
+	p.sessLock.Lock()
+	defer p.sessLock.Unlock()
 	delete(p.sessions, sessID)
 	return nil
 }
