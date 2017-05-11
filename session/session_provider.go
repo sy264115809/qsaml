@@ -71,15 +71,18 @@ func (p *LDAPSessProvider) GetSessionBySessionID(sessID string) (*saml.Session, 
 	p.sessLock.RLock()
 	defer p.sessLock.RUnlock()
 	if session, ok := p.sessions[sessID]; ok {
-		return session, nil
+		if time.Now().Before(session.ExpireTime) {
+			return session, nil
+		}
+		p.DestroySession(sessID)
 	}
 	return nil, ErrSessionNotFound
 }
 
-func (p *LDAPSessProvider) SetSession(session *saml.Session) error {
+func (p *LDAPSessProvider) SetSession(sessID string, session *saml.Session) error {
 	p.sessLock.Lock()
 	defer p.sessLock.Unlock()
-	p.sessions[session.ID] = session
+	p.sessions[sessID] = session
 	return nil
 }
 

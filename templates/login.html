@@ -33,27 +33,102 @@
                     <img src="{{.AssetsPrefix}}/static/logo.png" alt="Logo" />
                 </div>
 	            <h1>七牛单点登录</h1>
+	            <h3>即将登陆: {{.Destination}}</h3>
 	        </div><!-- #login-header -->
-            <form action="{{.URL}}" method="post">
+            {{$errMsg:=.ErrMsg}}
+            {{$loginName:=.LoginName}}
+
+            {{with .SAMLResp}}
+            <form id="samlForm" action="{{.URL}}" method="post">
                 <div class="form-controls">
-                    {{if ne .ErrMsg ""}}
-                    <p>{{.ErrMsg}}</p>
+                    {{with $errMsg}}
+                    <p>{{.}}</p>
+                    {{end}}
+                    {{with $loginName}}
+                    <p id="autoLoginHint">您将以 <strong>{{.}}</strong> 的身份登录...</p>
                     {{end}}
                     <p>
-                        <label for="username" style="display: none;">用户名</label>
-                        <input autocorrect="off" autocapitalize="off" class="form-control" type="text" id="username" tabindex="1" placeholder="LDAP用户名" name="username"  />
-                        <label for="password" style="display: none;">密码</label>
-                        <input autocorrect="off" autocapitalize="off" class="form-control" id="password" type="password" tabindex="2" name="password" placeholder="LDAP密码" />
-                        <input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />
+                        <input type="hidden" name="SAMLResponse" value="{{.SAMLResponse}}" />
                         <input type="hidden" name="RelayState" value="{{.RelayState}}" />
                     </p>
                 </div>
-                <p><input type="submit" class="btn btn-block" id="regularsubmit" value="登录" /></p>
+                <p>
+                    <input type="submit" class="btn btn-block btn-warning" id="samlSubmitBtn" value="使用其他身份登录" />
+                </p>
+            </form>
+            {{end}}
+
+            {{with .SAMLReq}}
+            <form id="loginForm" action="{{.URL}}" method="post">
+                <div class="form-controls">
+                    {{with $errMsg}}
+                    <p>{{.}}</p>
+                    {{end}}
+                    <p>
+                        <label for="username">用户名</label>
+                        <input autocorrect="off" autocapitalize="off" class="form-control" type="text" id="username" tabindex="1" placeholder="LDAP用户名" name="username"  />
+                        <label for="password">密码</label>
+                        <input autocorrect="off" autocapitalize="off" class="form-control" id="password" type="password" tabindex="2" name="password" placeholder="LDAP密码" />
+                        <input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />
+                        <input type="hidden" name="RelayState" value="{{.RelayState}}" />
+                        {{with $loginName}}
+                        <input type="hidden" name="LastLoginName" value="{{.}}" />
+                        {{end}}
+                    </p>
+                </div>
+                <p>
+                    <input type="submit" class="btn btn-block" id="loginSubmitBtn" value="登录" />
+                </p>
             </form>
             <div id="login-footer">
                 <p><a href="#" id="link-forgot">忘记密码</a></p>
             </div>
+            {{end}}
         </div>
     </div>
+    {{if .SAMLResp}}
+    <script>
+        $(document).ready(function(){
+            var $loginForm = $('#loginForm');
+            var $loginBtn = $('#loginSubmitBtn');
+            var $samlForm = $('#samlForm');
+            var $samlBtn = $('#samlSubmitBtn');
+
+
+            var autoLogin = setTimeout(function(){
+                $samlForm.submit();
+            }, 3000);
+
+            $loginForm.hide();
+            $samlBtn.click(function(){
+                clearTimeout(autoLogin);
+                $samlForm.remove();
+                $loginForm.show();
+            });
+        });
+    </script>
+    {{else}}
+        {{if .Retry}}
+    <script>
+        function updateQueryStringParameter(uri, key, value) {
+            var re = new RegExp('([?&])' + key + '=.*?(&|$)', 'i');
+            var separator = uri.indexOf('?') !== -1 ? '&' : '?';
+            if (uri.match(re)) {
+                return uri.replace(re, '$1' + key + '=' + value + '$2');
+            }
+            else {
+                return uri + separator + key + '=' + value;
+            }
+        }
+        var url = updateQueryStringParameter(window.location.href, 'retry', '{{.Retry}}')
+        {{with .SAMLReq}}
+        url = updateQueryStringParameter(url, 'SAMLRequest', encodeURIComponent('{{.SAMLRequestCompress}}'))
+        url = updateQueryStringParameter(url, 'RelayState', encodeURIComponent('{{.RelayState}}'))
+        {{end}}
+        window.location.href = url
+    </script>
+        {{end}}
+    {{end}}
+
 </body>
 </html>

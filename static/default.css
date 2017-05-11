@@ -92,6 +92,18 @@ body {
   border-bottom: 1px dotted #0094D8;
 }
 
+.btn-success {
+    color: #fff;
+    border-color: #6ea958;
+    background: #78bd5d;
+}
+
+.btn-warning {
+    color: #fff;
+    border-color: #dc9c41;
+    background: #f4ab43;
+}
+
 
 /** Form Elements **/
 .form-control {
