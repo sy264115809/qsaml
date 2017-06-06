@@ -74,7 +74,8 @@ func (p *LDAPSessProvider) GetSessionBySessionID(sessID string) (*saml.Session, 
 		if time.Now().Before(session.ExpireTime) {
 			return session, nil
 		}
-		p.DestroySession(sessID)
+		// use goroutine to destroy session avoiding deadlock
+		go p.DestroySession(sessID)
 	}
 	return nil, ErrSessionNotFound
 }
